@@ -1,0 +1,43 @@
+doctype html
+html(lang="en")
+    head
+        meta(charset="UTF-8")
+        meta(http-equiv="X-UA-Compatible", content="IE=edge")
+        meta(name="viewport", content="width=device-width, initial-scale=1.0")
+        link(rel="stylesheet", href="https://unpkg.com/mvp.css@1.12/mvp.css") 
+        link(rel="stylesheet", href="/public/css/style.css") 
+        title Noom
+    body 
+        header
+            h1 Noom 
+        main
+            div#enterContainer
+                form(name="enter" action="/video")
+                    input(name="roomName" type="text", placeholder="Room Name", required)
+                    input(name="nickname" type="text", placeholder="Change your nickname", value="Anonymous", required)
+                    input(type="submit", value="Enter")
+                h5 Available Rooms: 
+                ul#availRooms
+            div#wrapper
+                div#roomContainer
+                    h3#roomName
+                    ul#msgs
+                    form(name="send")#msgForm
+                        input(name="msg", type="text", placeholder="Write a message...", required)#msgForm__input
+                        input(type="submit", value="Send")
+                div#streamContainer
+                    video#myCamera(autoplay, muted,playsinline, width="320", height="240")
+                    div#control
+                        button#muteBtn Mute On
+                        button#cameraBtn Camera Off
+                    select(name="availCameras")#myCameras
+            //- form#nickForm
+            //-     input(type="text", placeholder="Nickname", required)#nickInput
+            //-     input(type="submit", value="Save")
+            //- form#msgForm
+            //-     input(type="text", placeholder="Write a message...", required)#msgInput
+            //-     input(type="submit", value="Send")
+            //- ul#msgs
+            //- =================================================================>
+        script(src="/socket.io/socket.io.js")
+        script(src="/public/js/app.js")
