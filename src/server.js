@@ -1,9 +1,9 @@
-import http from "http";
 import express from "express";
 import { Server } from "socket.io";
+import http from "http";
 import { instrument } from "@socket.io/admin-ui";
 
-const PORT = 3005;
+const PORT = 4000;
 
 const app = express();
 
@@ -18,14 +18,14 @@ app.get("/", (_, res) => res.render("index"));
 app.get("/*", (_, res) => res.redirect("/"));
 
 const httpServer = http.createServer(app);
-const ioServer = new Server(httpServer, {
+const wsServer = new Server(httpServer, {
   cors: {
     origin: ["https://admin.socket.io"],
     credentials: true,
   },
 });
 
-instrument(ioServer, {
+instrument(wsServer, {
   auth: false,
   mode: "development",
 });
@@ -44,7 +44,7 @@ instrument(ioServer, {
 //   socket.on("message", (msg) => {
 //     // socket.send(message.toString());
 //     const message = JSON.parse(msg.toString());
-//     // console.log(mgs, message);
+//     // console.log(msg, message);
 //     switch (message.type) {
 //       case "new_message":
 //         sockets.forEach((aSocket) =>
@@ -63,7 +63,7 @@ const publicRooms = () => {
     sockets: {
       adapter: { sids, rooms },
     },
-  } = ioServer;
+  } = wsServer;
   const publicRooms = [];
   rooms.forEach((_, key) => {
     if (sids.get(key) === undefined) {
@@ -74,31 +74,57 @@ const publicRooms = () => {
 };
 
 const countUsers = (roomName) => {
-  return ioServer.sockets.adapter.rooms.get(roomName)?.size;
+  const cnt = wsServer.sockets.adapter.rooms.get(roomName)?.size;
+  return cnt ? cnt : 0;
 };
 
 ////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////
-ioServer.on("connection", (socket) => {
+wsServer.on("connection", (socket) => {
   // 마찬가지로 클라이언트 socket과 연결되어 객체를 받아 온다.
   socket["nickname"] = "Anonymous";
-
   socket.onAny((event) => {
     console.log(`Socket event("${event}") happened!`);
   });
-
+  socket.on("check_user_capacity", (roomName, nickname) => {
+    if (countUsers(roomName) > 1) {
+      socket.disconnect();
+      return;
+    }
+    socket.emit("check_user_capacity", roomName, nickname);
+  });
   socket.on("enter_room", (roomName, nickname) => {
-    // 주의할 점은 이 fn이 프론트엔드에서 실행된다는 것!
-    socket.join(roomName);
     socket["nickname"] = nickname;
+    socket.join(roomName);
     socket
       .to(roomName)
       .emit("welcome", socket.nickname, roomName, countUsers(roomName)); // except myself
-    ioServer.sockets.emit("change_rooms_status", publicRooms());
+    wsServer.sockets.emit("change_rooms_status", publicRooms());
   });
 
   socket.on("offer", (offer, roomName) => {
     socket.to(roomName).emit("offer", offer);
+  });
+
+  socket.on("answer", (answer, roomName) => {
+    socket.to(roomName).emit("answer", answer);
+  });
+
+  socket.on("ice", (ice, roomName) => {
+    socket.to(roomName).emit("ice", ice);
+  });
+
+  socket.on("send_me_message", (msg, roomName, fn) => {
+    socket
+      .to(roomName)
+      .emit("send_others_message", `${socket.nickname}: ${msg}`);
+    fn();
+  });
+
+  socket.on("leave", (roomName, fn) => {
+    const nickname = socket.nickname;
+    socket.leave(roomName);
+    fn();
+    wsServer.sockets.emit("leave", nickname);
   });
 
   socket.on("disconnecting", () => {
@@ -110,14 +136,7 @@ ioServer.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
-    ioServer.sockets.emit("change_rooms_status", publicRooms());
-  });
-
-  socket.on("send_me_message", (msg, roomName, fn) => {
-    socket
-      .to(roomName)
-      .emit("send_others_message", `${socket.nickname}: ${msg}`);
-    fn();
+    wsServer.sockets.emit("change_rooms_status", publicRooms());
   });
 });
 

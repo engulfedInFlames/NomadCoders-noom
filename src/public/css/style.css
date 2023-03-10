@@ -6,12 +6,21 @@ main {
 }
 #wrapper {
   display: flex;
+  flex-direction: column;
   justify-content: space-around;
   align-items: center;
 }
 /* Message Part */
 /* Video Part */
-/* #myCamera{} */
+#cameras {
+  min-width: 640px;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: space-around;
+  align-items: center;
+  overflow: auto;
+}
 #control {
   display: flex;
   justify-content: center;
